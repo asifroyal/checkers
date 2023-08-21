@@ -1,3 +1,4 @@
+// Package main provides a tool to scan files for references to environment variables and check if they are defined in the environment.
 package main
 
 import (
@@ -10,11 +11,14 @@ import (
 	"sync"
 )
 
-var (
-	varIndex = make(map[string]bool)
-	mu       sync.Mutex
-)
+// varIndex is a map that stores the names of environment variables found in the scanned files.
+var varIndex = make(map[string]bool)
 
+// mu is a mutex used to synchronize access to varIndex.
+var mu sync.Mutex
+
+// scanFile reads the contents of a file and searches for references to environment variables.
+// If a reference is found, the name of the variable is added to varIndex.
 func scanFile(path string, extensions []string) {
 	if !isValidFile(path, extensions) {
 		return
@@ -36,6 +40,7 @@ func scanFile(path string, extensions []string) {
 	}
 }
 
+// scanFiles reads file paths from a channel and calls scanFile for each path.
 func scanFiles(fileChan chan string, wg *sync.WaitGroup, extensions []string) {
 	defer wg.Done()
 
@@ -44,15 +49,19 @@ func scanFiles(fileChan chan string, wg *sync.WaitGroup, extensions []string) {
 	}
 }
 
+// checkEnv scans the specified directories for files with the specified extensions and searches for references to environment variables.
+// If a reference is found and the variable is not defined in the environment, a message is printed to stdout.
 func checkEnv(directories []string, extensions []string, ignoreDirs []string, scanFiles func(chan string, *sync.WaitGroup, []string)) {
 	fileChan := make(chan string)
 	var wg sync.WaitGroup
 
+	// Start 10 goroutines to read from fileChan and call scanFile for each path.
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go scanFiles(fileChan, &wg, extensions)
 	}
 
+	// hasExtension returns true if the path has one of the specified extensions.
 	hasExtension := func(path string, extensions []string) bool {
 		for _, ext := range extensions {
 			if strings.HasSuffix(path, ext) {
@@ -62,6 +71,7 @@ func checkEnv(directories []string, extensions []string, ignoreDirs []string, sc
 		return false
 	}
 
+	// isIgnoredDir returns true if the path starts with one of the specified directories to ignore.
 	isIgnoredDir := func(path string, ignoreDirs []string) bool {
 		for _, dir := range ignoreDirs {
 			if strings.HasPrefix(path, dir) {
@@ -71,6 +81,7 @@ func checkEnv(directories []string, extensions []string, ignoreDirs []string, sc
 		return false
 	}
 
+	// Walk each directory and send the paths of matching files to fileChan.
 	for _, dir := range directories {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			fmt.Printf("Error: The specified directory '%s' does not exist.\n", dir)
@@ -98,6 +109,7 @@ func checkEnv(directories []string, extensions []string, ignoreDirs []string, sc
 	close(fileChan)
 	wg.Wait()
 
+	// Check if each variable in varIndex is defined in the environment.
 	for varName := range varIndex {
 		if os.Getenv(varName) == "" {
 			fmt.Printf("Missing variable: %s\n", varName)
@@ -105,6 +117,7 @@ func checkEnv(directories []string, extensions []string, ignoreDirs []string, sc
 	}
 }
 
+// isValidFile returns true if the path has one of the specified extensions.
 func isValidFile(path string, extensions []string) bool {
 	ext := filepath.Ext(path)
 	for _, e := range extensions {
@@ -115,6 +128,7 @@ func isValidFile(path string, extensions []string) bool {
 	return false
 }
 
+// main parses command line flags and calls checkEnv with the specified arguments.
 func main() {
 	dirsFlag := flag.String("dirs", "", "Comma-separated list of directories to scan")
 	extsFlag := flag.String("exts", "", "Comma-separated list of file extensions to scan")
