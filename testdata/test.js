@@ -1,0 +1,1 @@
+let test_var = process.env.TEST_VAR
