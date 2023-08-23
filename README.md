@@ -7,7 +7,7 @@ CheckEnv is a command-line tool written in Go that scans specified directories f
 To install CheckEnv, you can use `go get`:
 
 ```go
-go get github.com/username/checkenv
+go get github.com/asifroyal/checkenv
 ```
 
 ## Usage
